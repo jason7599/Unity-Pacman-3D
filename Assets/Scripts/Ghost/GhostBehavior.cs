@@ -1,33 +1,44 @@
 using System.Collections;
 using UnityEngine;
 
+public enum GhostState { CHASE, SCATTER, FLEE }
+
 public abstract class GhostBehavior : MonoBehaviour
 {
-    [SerializeField] private float _speed = 3f;
     [SerializeField] private float _enterTime = 0f;
+    [SerializeField] private Transform _home;
 
-    protected PacmanMovementArcade _pacmanMovement;
-    protected abstract Vector3 Target { get; }
+    private float _speed;
+
+    private GhostState _state = GhostState.CHASE;
+    private GhostState _prevState;
 
     private Vector3 _startingPosition;
-    private Vector3 _startingDirection;
-    private Vector3 _direction = Vector3.zero;
+    private Vector3 _direction = Vector3.right;
+    private Vector3 _target;
 
     private Rigidbody _rigidbody;
     private LayerMask _wallLayer;
 
+    protected PacmanMovementArcade _pacmanMovement;
+
+    protected abstract Vector3 ChaseTarget(); // override for each ghost
+
     private void Start()
     {
+        // initialize variables
+        _speed = GameManager.ghostSpeed;
+
         _pacmanMovement = 
             GameManager.Instance.Pacman.GetComponent<PacmanMovementArcade>();
 
         _startingPosition = transform.position;
-        _startingDirection = transform.forward;
 
         _rigidbody = GetComponent<Rigidbody>();
 
         _wallLayer = LayerMask.GetMask("Wall");
         
+        // start initial routine
         StartCoroutine(EnterRoutine());
     }
 
@@ -38,11 +49,14 @@ public abstract class GhostBehavior : MonoBehaviour
 
     private IEnumerator EnterRoutine()
     {
+        // wait in ghost house
         yield return new WaitForSeconds(_enterTime);
         
-        _rigidbody.position = GameManager.Instance.DoorExit;
-        _direction = _startingDirection;
+        // TODO: find a way to do this more smoothly
+        _rigidbody.position = GameManager.Instance.DoorExit.position;
+        _direction = Vector3.left;
 
+        // start making decisions dynamically
         StartCoroutine(ChangeDirection());
     }
 
@@ -50,6 +64,8 @@ public abstract class GhostBehavior : MonoBehaviour
     {
         while (true)
         {
+            UpdateTarget();
+
             Vector3 nextDirection = ChooseDirection();
 
             if (nextDirection != transform.forward)
@@ -57,15 +73,19 @@ public abstract class GhostBehavior : MonoBehaviour
                 _direction = nextDirection;
                 _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
                 
-                yield return new WaitForSeconds(0.25f); // to prevent turning 180 degrees at once
+                // to prevent turning 180 degrees at once
+                // TODO: not sure if this is enough, I think I witnessed blinky doing a 180
+                yield return new WaitForSeconds(0.25f); 
             }
             else 
             {
                 yield return null;
             }
+
         }
     }
 
+    // choose best direction for current _target
     private Vector3 ChooseDirection()
     {
         Vector3 nextDirection = transform.forward;
@@ -97,6 +117,7 @@ public abstract class GhostBehavior : MonoBehaviour
         return nextDirection;
     }
 
+    // same as pacman's
     private bool CanMoveTo(Vector3 direction)
     {
         RaycastHit hit;
@@ -104,26 +125,35 @@ public abstract class GhostBehavior : MonoBehaviour
         return hit.collider == null;
     }
 
+    // Set target based on current state
+    private void UpdateTarget()
+    {
+        if (_state == GhostState.CHASE) _target = ChaseTarget();
+        else if (_state == GhostState.SCATTER) _target = _home.position;
+    }
+
     private float DistanceInDirection(Vector3 direction)
     {
-        Vector3 offset = Target - (_rigidbody.position + direction);
+        Vector3 offset = _target - (_rigidbody.position + direction);
         return new Vector3(offset.x, 0f, offset.z).sqrMagnitude;
     }
 
     public void Reset()
     {
         transform.position = _startingPosition;
-        transform.rotation = Quaternion.LookRotation(_startingDirection);
-        _direction = Vector3.zero;
+        _direction = Vector3.right;
+        _state = GhostState.CHASE;
 
         StopAllCoroutines();
         StartCoroutine(EnterRoutine());
     }
 
-    // private void OnDrawGizmos()
-    // {
-    //     Gizmos.color = Color.red;
-    //     Gizmos.DrawRay(transform.position, Target - transform.position);
-    // }
+    public void SwitchState()
+    {
+        if (_state == GhostState.CHASE) _state = GhostState.SCATTER;
+        else if (_state == GhostState.SCATTER) _state = GhostState.CHASE;
+
+        _direction = -_direction;
+    }
 
 }

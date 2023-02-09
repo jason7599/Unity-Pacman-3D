@@ -2,11 +2,9 @@ using UnityEngine;
 
 public class PacmanMovementArcade : MonoBehaviour
 {
-    [SerializeField] private float _speed = 4f;
+    private float _speed;
 
     private Vector3 _startingPosition;
-    private Vector3 _startingDirection;
-
     private Vector3 _direction = Vector3.left;
     private Vector3 _nextDirection = Vector3.zero;
 
@@ -18,11 +16,11 @@ public class PacmanMovementArcade : MonoBehaviour
 
     private LayerMask _wallLayer;
 
-    private void Awake()
+    private void Start()
     {
-        _startingPosition = transform.position;
-        _startingDirection = transform.forward;
+        _speed = GameManager.pacmanSpeed;
 
+        _startingPosition = transform.position;
         _direction = transform.forward;
         _nextDirection = Vector3.zero;
 
@@ -96,9 +94,9 @@ public class PacmanMovementArcade : MonoBehaviour
     public void Reset()
     {
         transform.position = _startingPosition;
-        transform.rotation = Quaternion.LookRotation(_startingDirection);
+        transform.rotation = Quaternion.LookRotation(Vector3.left);
 
-        _direction = _startingDirection;
+        _direction = Vector3.left;
         _nextDirection = Vector3.zero;
     }
 
