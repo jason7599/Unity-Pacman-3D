@@ -17,6 +17,8 @@ public class PacmanMovementArcade : MonoBehaviour
 
     public Vector3 Direction { get { return _direction; } }
     public Vector3 Position { get { return transform.position; } }
+    
+    public bool isPoweredUp = false;
 
     private Rigidbody _rigidbody;
     private Camera _cam;
@@ -37,16 +39,24 @@ public class PacmanMovementArcade : MonoBehaviour
         _wallLayer = LayerMask.GetMask("Wall");
     }
 
-    // private void OnCollisionEnter(Collision collision)
-    // {
-    //     GameObject go = collision.gameObject;
+    private void OnCollisionEnter(Collision collision)
+    {
+        GameObject go = collision.gameObject;
 
-    //     if (go.CompareTag("Ghost")) // ghost
-    //     {
-    //         _cam.transform.LookAt(go.transform);
-    //         GameManager.Instance.OnPacmanDeath();
-    //     }
-    // }
+        if (go.CompareTag("Ghost")) // ghost
+        {
+            if (isPoweredUp)
+            {
+                // TODO: fuck
+                go.GetComponent<GhostBehavior>().Reset();
+            }
+            else
+            {
+                _cam.transform.LookAt(go.transform);
+                GameManager.Instance.OnPacmanDeath();
+            }
+        }
+    }
 
     private void OnTriggerEnter(Collider collider)
     {
@@ -56,6 +66,11 @@ public class PacmanMovementArcade : MonoBehaviour
         {
             Destroy(go);
             GameManager.Instance.OnPelletEaten();
+        }
+        else if (go.CompareTag("PowerPellet"))
+        {
+            Destroy(go);
+            GameManager.Instance.OnPowerUp();
         }
     }
 
