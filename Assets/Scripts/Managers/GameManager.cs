@@ -33,7 +33,32 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        StartCoroutine(SwitchStates());
+        // StartCoroutine(SwitchStates());
+
+    }
+
+    private bool _isChaseMode = true;
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            foreach (GameObject ghost in _ghosts)
+            {
+                ghost.GetComponent<GhostBehavior>().SwitchState();
+            }
+
+            if (_isChaseMode)
+            {
+                _isChaseMode = false;
+                print("Scatter Mode");
+            }
+            else
+            {
+                _isChaseMode = true;
+                print("Chase Mode");
+            }
+        }
     }
 
     private static void Init()
@@ -104,7 +129,7 @@ public class GameManager : MonoBehaviour
             ghost.GetComponent<GhostBehavior>().Reset();
         }
 
-        StartCoroutine(SwitchStates());
+        // StartCoroutine(SwitchStates());
     }
 
     private IEnumerator SwitchStates()

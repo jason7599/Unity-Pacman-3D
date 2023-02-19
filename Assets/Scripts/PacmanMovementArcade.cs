@@ -1,7 +1,14 @@
 using UnityEngine;
 
+public enum MovementMode
+{
+    ARCADE, DEBUG
+}
+
 public class PacmanMovementArcade : MonoBehaviour
 {
+    [SerializeField] private MovementMode _movementMode = MovementMode.ARCADE;
+
     private float _speed;
 
     private Vector3 _startingPosition;
@@ -30,17 +37,16 @@ public class PacmanMovementArcade : MonoBehaviour
         _wallLayer = LayerMask.GetMask("Wall");
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        GameObject go = collision.gameObject;
+    // private void OnCollisionEnter(Collision collision)
+    // {
+    //     GameObject go = collision.gameObject;
 
-        if (go.CompareTag("Ghost")) // ghost
-        {
-            _cam.transform.LookAt(go.transform);
-            GameManager.Instance.OnPacmanDeath();
-        }
-
-    }
+    //     if (go.CompareTag("Ghost")) // ghost
+    //     {
+    //         _cam.transform.LookAt(go.transform);
+    //         GameManager.Instance.OnPacmanDeath();
+    //     }
+    // }
 
     private void OnTriggerEnter(Collider collider)
     {
@@ -55,6 +61,12 @@ public class PacmanMovementArcade : MonoBehaviour
 
     private void Update()
     {
+        if (_movementMode == MovementMode.ARCADE) MoveArcade();
+        else MoveDebug();
+    }
+
+    private void MoveArcade()
+    {
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
             _nextDirection = transform.forward;
 
@@ -66,6 +78,37 @@ public class PacmanMovementArcade : MonoBehaviour
 
         else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
             _nextDirection = transform.right;
+        
+        // if _nextDirection is set, and can move to that direction, change direction
+        if (_nextDirection != Vector3.zero)
+        {
+            if (CanMoveTo(_nextDirection))
+            {
+                _direction = _nextDirection;
+                _nextDirection = Vector3.zero;
+                _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
+            }
+        }
+
+        _rigidbody.MovePosition(_rigidbody.position + _direction * _speed * Time.deltaTime);
+
+        _cam.transform.localRotation = Quaternion.Slerp(_cam.transform.localRotation, Quaternion.LookRotation(_direction), Time.deltaTime * 10f);
+        _cam.transform.position = transform.position;
+    }
+
+    private void MoveDebug()
+    {
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+            _nextDirection = Vector3.forward;
+
+        else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+            _nextDirection = Vector3.left;
+
+        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+            _nextDirection = Vector3.back;
+
+        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+            _nextDirection = Vector3.right;
         
         // if _nextDirection is set, and can move to that direction, change direction
         if (_nextDirection != Vector3.zero)

@@ -11,7 +11,6 @@ public abstract class GhostBehavior : MonoBehaviour
     private float _speed;
 
     private GhostState _state = GhostState.CHASE;
-    private GhostState _prevState;
 
     private Vector3 _startingPosition;
     private Vector3 _direction = Vector3.right;
@@ -64,39 +63,48 @@ public abstract class GhostBehavior : MonoBehaviour
     {
         while (true)
         {
-            UpdateTarget();
+            Vector3 nextDirection = GetBestDirection();
 
-            Vector3 nextDirection = ChooseDirection();
-
+            // if change in direction
             if (nextDirection != transform.forward)
             {
                 _direction = nextDirection;
                 _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
-                
-                // to prevent turning 180 degrees at once
-                // TODO: not sure if this is enough, I think I witnessed blinky doing a 180
-                yield return new WaitForSeconds(0.25f); 
+
+                // to prevent turning 180
+                yield return new WaitForSeconds(0.25f);
             }
             else 
             {
                 yield return null;
             }
-
+            
         }
     }
 
     // choose best direction for current _target
-    private Vector3 ChooseDirection()
+    private Vector3 GetBestDirection()
     {
         Vector3 nextDirection = transform.forward;
         float minDistance = float.PositiveInfinity;
 
+        if (_state == GhostState.CHASE)
+        {
+            _target = ChaseTarget();
+        }
+        else if (_state == GhostState.SCATTER)
+        {
+            _target = _home.position;
+        }
+
         if (CanMoveTo(transform.forward))
-            minDistance = DistanceInDirection(transform.forward);
+        {
+            minDistance = DistanceToTargetInDirection(transform.forward);
+        }
 
         if (CanMoveTo(transform.right))
         {
-            float distance = DistanceInDirection(transform.right);
+            float distance = DistanceToTargetInDirection(transform.right);
             if (distance < minDistance)
             {
                 nextDirection = transform.right;
@@ -106,33 +114,49 @@ public abstract class GhostBehavior : MonoBehaviour
 
         if (CanMoveTo(-transform.right))
         {
-            float distance = DistanceInDirection(-transform.right);
+            float distance = DistanceToTargetInDirection(-transform.right);
             if (distance < minDistance)
             {
                 nextDirection = -transform.right;
-                minDistance = distance;
             }
         }
 
         return nextDirection;
     }
 
+    public float halfExtents = 0.45f;
+
     // same as pacman's
     private bool CanMoveTo(Vector3 direction)
     {
         RaycastHit hit;
-        Physics.BoxCast(transform.position, Vector3.one * 0.45f, direction, out hit, Quaternion.identity, 1f, _wallLayer);
+        Physics.BoxCast(transform.position, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer);
         return hit.collider == null;
     }
 
-    // Set target based on current state
-    private void UpdateTarget()
+    private void OnDrawGizmos()
     {
-        if (_state == GhostState.CHASE) _target = ChaseTarget();
-        else if (_state == GhostState.SCATTER) _target = _home.position;
+        Vector3[] directions = new Vector3[] {transform.forward, transform.right, -transform.forward, -transform.right};
+
+        foreach (Vector3 direction in directions)
+        {
+            RaycastHit hit;
+            if (Physics.BoxCast(transform.position, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer))
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawRay(transform.position, direction * hit.distance * 1.5f);
+                Gizmos.DrawWireCube(transform.position + direction * hit.distance, Vector3.one * halfExtents * 2);
+            }
+            else
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawRay(transform.position, direction);
+                Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
+            }
+        }
     }
 
-    private float DistanceInDirection(Vector3 direction)
+    private float DistanceToTargetInDirection(Vector3 direction)
     {
         Vector3 offset = _target - (_rigidbody.position + direction);
         return new Vector3(offset.x, 0f, offset.z).sqrMagnitude;
@@ -150,10 +174,17 @@ public abstract class GhostBehavior : MonoBehaviour
 
     public void SwitchState()
     {
-        if (_state == GhostState.CHASE) _state = GhostState.SCATTER;
-        else if (_state == GhostState.SCATTER) _state = GhostState.CHASE;
+        if (_state == GhostState.CHASE)
+        {
+            _state = GhostState.SCATTER;
+        }
+        else if (_state == GhostState.SCATTER)
+        {
+            _state = GhostState.CHASE;
+        }
 
         _direction = -_direction;
+        _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
     }
 
 }

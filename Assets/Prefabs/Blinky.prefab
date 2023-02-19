@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 5279211706304432762}
   - component: {fileID: 5279211706304432761}
   - component: {fileID: 5279211706304432767}
-  - component: {fileID: 5279211706304432766}
   - component: {fileID: 5279211706304432741}
   m_Layer: 7
   m_Name: Blinky
@@ -114,22 +113,8 @@ SphereCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.001
+  m_Radius: 0.3
   m_Center: {x: 0, y: -0.25, z: 0}
---- !u!136 &5279211706304432766
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5279211706304432765}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &5279211706304432741
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142,6 +127,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd1a3afe8d984ab4bbd9c5beb1c1537f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _speed: 3
   _enterTime: 0
   _home: {fileID: 0}
