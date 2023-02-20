@@ -9,53 +9,111 @@ public abstract class GhostBehavior : MonoBehaviour
     [SerializeField] private Transform _home;
     [SerializeField] private LayerMask _wallLayer;
 
+    private GhostState _state = GhostState.SCATTER;
+    private GhostState _prevState = GhostState.SCATTER;
+
     private float _speed;
-
-    private GhostState _state = GhostState.CHASE;
-
+    private float _speedMultiplier = 1f;
     private Vector3 _startingPosition;
     private Vector3 _direction = Vector3.right;
     private Vector3 _target;
-
     private Rigidbody _rigidbody;
+    private Vector3 _doorExitPos;
+    private Vector3 _spawnPos;
+
+    private Renderer _renderer;
+    private Material _material;
+    private Material _frightenedMaterial;
 
     protected PacmanMovementArcade _pacmanMovement;
-
     protected abstract Vector3 ChaseTarget(); // override for each ghost
 
     private void Start()
     {
         // initialize variables
         _speed = GameManager.ghostSpeed;
-
         _pacmanMovement = 
-            GameManager.Instance.Pacman.GetComponent<PacmanMovementArcade>();
-
+            GameManager.Instance.Pacman;
         _startingPosition = transform.position;
-
         _rigidbody = GetComponent<Rigidbody>();
+        _doorExitPos = GameManager.Instance.DoorExit.position;
+        _spawnPos = GameManager.Instance.Spawn.position;
+        _renderer = GetComponent<Renderer>();
+        _material = _renderer.material;
+        _frightenedMaterial = 
+            GameManager.Instance.FrightenedMaterial;
 
         // start initial routine
-        StartCoroutine(EnterRoutine());
+        StartCoroutine(InitRoutine());
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        _rigidbody.MovePosition(_rigidbody.position + _direction * Time.deltaTime * _speed);
+        _rigidbody.MovePosition(_rigidbody.position + _direction * Time.fixedDeltaTime * _speed * _speedMultiplier);
     }
 
-    private IEnumerator EnterRoutine()
+    private void SetDirection(Vector3 direction)
     {
-        // wait in ghost house
-        yield return new WaitForSeconds(_enterTime);
-        
-        // TODO: find a way to do this more smoothly
-        _rigidbody.position = GameManager.Instance.DoorExit.position;
-        _direction = Vector3.left;
-        _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
+        _direction = direction;
+        _rigidbody.MoveRotation(Quaternion.LookRotation(direction));
+    }
 
-        // start making decisions dynamically
-        StartCoroutine(MoveRoutine());
+    private IEnumerator InitRoutine()
+    {
+        if (_enterTime != 0f)
+        {
+            yield return StartCoroutine(IdleHome(_enterTime));
+        }
+
+        yield return StartCoroutine(ExitHome());
+    }
+
+    private IEnumerator Respawn()
+    {
+        transform.position = _spawnPos;
+        _state = _prevState;
+
+        yield return StartCoroutine(ExitHome());
+    }
+
+    // bounce around in home
+    private IEnumerator IdleHome(float idleTime)
+    {
+        SetDirection(Vector3.forward);
+
+        float elapsed = 0f;
+        while (elapsed < idleTime)
+        {
+            if (!CanMoveTo(transform.forward))
+                SetDirection(-transform.forward);
+            
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    private IEnumerator ExitHome()
+    {
+        // transform.position = new Vector3(_doorExitPos.x, transform.position.y, transform.position.z);
+        SetDirection(Vector3.forward);
+        _rigidbody.isKinematic = true;
+
+        while (true)
+        {
+            float offset = _doorExitPos.z - transform.position.z;
+
+            if (offset < 0f) break;
+
+            transform.position += Vector3.forward * _speed * Time.deltaTime;
+            yield return null;
+        }
+
+        // transform.position = new Vector3(_doorExitPos.x, transform.position.y, _doorExitPos.z);
+        transform.position = _doorExitPos;
+        SetDirection(Vector3.left);
+        _rigidbody.isKinematic = false;
+
+        yield return StartCoroutine(MoveRoutine());
     }
 
     private IEnumerator MoveRoutine()
@@ -67,9 +125,7 @@ public abstract class GhostBehavior : MonoBehaviour
             // if change in direction
             if (nextDirection != transform.forward)
             {
-                _direction = nextDirection;
-                _rigidbody.MoveRotation(Quaternion.LookRotation(_direction));
-
+                SetDirection(nextDirection);
                 // to prevent turning 180
                 yield return new WaitForSeconds(0.25f);
             }
@@ -122,43 +178,14 @@ public abstract class GhostBehavior : MonoBehaviour
         return nextDirection;
     }
 
-    public float halfExtents = 0.45f;
-    public float offset = 0.2f;
+    [SerializeField] private float halfExtents = 0.45f;
+    [SerializeField] private float offset = 0.2f;
 
-    // same as pacman's
     private bool CanMoveTo(Vector3 direction)
     {
         RaycastHit hit;
         Physics.BoxCast(transform.position - direction * offset, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer);
         return hit.collider == null;
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (_pacmanMovement != null)
-        {
-            Gizmos.color = Color.magenta;
-            Gizmos.DrawRay(transform.position, _target - transform.position);
-        }
-
-        Vector3[] directions = new Vector3[] {transform.forward, transform.right, -transform.forward, -transform.right};
-
-        foreach (Vector3 direction in directions)
-        {
-            RaycastHit hit;
-            if (Physics.BoxCast(transform.position - direction * offset, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer))
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawRay(transform.position - direction * offset, direction * hit.distance * 1.5f);
-                Gizmos.DrawWireCube(transform.position + direction * hit.distance, Vector3.one * halfExtents * 2);
-            }
-            else
-            {
-                Gizmos.color = Color.green;
-                Gizmos.DrawRay(transform.position - direction * offset, direction);
-                Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
-            }
-        }
     }
 
     private float DistanceToTargetInDirection(Vector3 direction)
@@ -170,11 +197,11 @@ public abstract class GhostBehavior : MonoBehaviour
     public void Reset()
     {
         transform.position = _startingPosition;
-        _direction = Vector3.right;
-        _state = GhostState.CHASE;
+        _state = _prevState;
 
         StopAllCoroutines();
-        StartCoroutine(EnterRoutine());
+
+        StartCoroutine(InitRoutine());
     }
 
     public void SwitchState()
@@ -188,13 +215,61 @@ public abstract class GhostBehavior : MonoBehaviour
             _state = GhostState.CHASE;
         }
 
-        _direction = -_direction;
-        _rigidbody.MoveRotation(Quaternion.LookRotation(_direction)); // 이 한 줄 안써서 ㅅㅂ 개고생했네
+        SetDirection(-_direction);
+    }
+
+    public void EnterFrightened()
+    {
+        _prevState = _state;
+        _state = GhostState.FRIGHTENED;
+        _speedMultiplier = 0.75f;
+        _renderer.material = _frightenedMaterial;
+
+        SetDirection(-transform.forward);
+    }
+
+    public void ExitFrightened()
+    {
+        if (_state == GhostState.FRIGHTENED)
+        {
+            _state = _prevState;
+            _speedMultiplier = 1f;
+            _renderer.material = _material;
+        }
     }
 
     public void OnEaten()
     {
+        ExitFrightened();
         
     }
+
+    // private void OnDrawGizmos()
+    // {
+    //     if (_pacmanMovement != null)
+    //     {
+    //         Gizmos.color = Color.magenta;
+    //         Gizmos.DrawRay(transform.position, _target - transform.position);
+    //     }
+
+    //     Vector3[] directions = new Vector3[] {transform.forward, transform.right, -transform.forward, -transform.right};
+
+    //     foreach (Vector3 direction in directions)
+    //     {
+    //         RaycastHit hit;
+    //         if (Physics.BoxCast(transform.position - direction * offset, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer))
+    //         {
+    //             Gizmos.color = Color.red;
+    //             Gizmos.DrawRay(transform.position - direction * offset, direction * hit.distance * 1.5f);
+    //             Gizmos.DrawWireCube(transform.position + direction * hit.distance, Vector3.one * halfExtents * 2);
+    //         }
+    //         else
+    //         {
+    //             Gizmos.color = Color.green;
+    //             Gizmos.DrawRay(transform.position - direction * offset, direction);
+    //             Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
+    //         }
+    //     }
+    // }
 
 }

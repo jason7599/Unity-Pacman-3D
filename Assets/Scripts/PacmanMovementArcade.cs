@@ -47,7 +47,6 @@ public class PacmanMovementArcade : MonoBehaviour
         {
             if (isPoweredUp)
             {
-                // TODO: fuck
                 go.GetComponent<GhostBehavior>().Reset();
             }
             else

@@ -9,60 +9,57 @@ public class GameManager : MonoBehaviour
 
     public static float pacmanSpeed = 4f;
     public static float ghostSpeed = 4f;
-
     public float powerUpDuration = 10f;
-
     public bool debugMode = false;
 
-    [SerializeField] private GameObject _pacman;
-    public GameObject Pacman { get { return _pacman; } }
+    private PacmanMovementArcade _pacman;
+    public PacmanMovementArcade Pacman { get { return _pacman; } }
 
-    [SerializeField] private GameObject[] _ghosts;
+    private GhostBehavior[] _ghosts;
 
     [SerializeField] private Transform _doorExit;
     public Transform DoorExit { get { return _doorExit; } }
 
+    [SerializeField] private Transform _spawn;
+    public Transform Spawn { get { return _spawn; } }
+
+    [SerializeField] private Material _frightenedMaterial;
+    public Material FrightenedMaterial { get { return _frightenedMaterial; } }
+
     [SerializeField] private Text _livesText;
     [SerializeField] private Text _scoreText;
     [SerializeField] private Text _pelletsText;
+    [SerializeField] private Text _timeText;
 
     private float[] _intervals = {7f, 20f, 7f, 20f, 5f, 20f, 5f, float.PositiveInfinity};
-    private int _intervalIndex = 0;
 
     private int _lives = 3;
     private int _score = 0;
     private int _pelletsLeft = 244;
 
-    private void Awake() { Init(); }
+    private void Awake() 
+    {
+        Init();
+
+        _pacman = GameObject.FindGameObjectWithTag("Player").GetComponent<PacmanMovementArcade>();
+
+        GameObject[] gos = GameObject.FindGameObjectsWithTag("Ghost");
+        _ghosts = new GhostBehavior[gos.Length];
+
+        for (int i = 0; i < gos.Length; i++)
+        {
+            _ghosts[i] = gos[i].GetComponent<GhostBehavior>();
+        }
+    }
 
     private void Start()
     {
-        // if (debugMode)
         StartCoroutine(StateRoutine());
     }
 
-    // private bool _isChaseMode = true;
-
     private void Update()
     {
-        // if (Input.GetKeyDown(KeyCode.R))
-        // {
-        //     if (_isChaseMode)
-        //     {
-        //         _isChaseMode = false;
-        //         print("Scatter");
-        //     }
-        //     else
-        //     {
-        //         _isChaseMode = true;
-        //         print("Chase");
-        //     }
 
-        //     foreach(GameObject ghost in _ghosts)
-        //     {
-        //         ghost.GetComponent<GhostBehavior>().SwitchState();
-        //     }
-        // }
     }
 
     private static void Init()
@@ -82,13 +79,12 @@ public class GameManager : MonoBehaviour
 
     public void OnPacmanDeath()
     {
-        // stop and hide pacman
-        _pacman.SetActive(false);
+        _pacman.enabled = false;
 
         // stop chasing
-        foreach(GameObject ghost in _ghosts)
+        foreach(GhostBehavior ghost in _ghosts)
         {
-            ghost.GetComponent<GhostBehavior>().enabled = false;
+            ghost.enabled = false;
         }
 
         _lives--;
@@ -122,21 +118,31 @@ public class GameManager : MonoBehaviour
     private IEnumerator PowerUpRoutine()
     {
         print("powerup");
-        _pacman.GetComponent<PacmanMovementArcade>().isPoweredUp = true;
+        _pacman.isPoweredUp = true;
+
+        foreach (GhostBehavior ghost in _ghosts)
+        {
+            ghost.EnterFrightened();
+        }
 
         yield return new WaitForSeconds(powerUpDuration);
+
+        foreach (GhostBehavior ghost in _ghosts)
+        {
+            ghost.ExitFrightened();
+        }
         
-        _pacman.GetComponent<PacmanMovementArcade>().isPoweredUp = false;
+        _pacman.isPoweredUp = false;
         print("powerup end");
     }
 
     private void OnLevelFinished()
     {
-        _pacman.GetComponent<PacmanMovementArcade>().enabled = false;
+        _pacman.enabled = false;
 
-        foreach (GameObject ghost in _ghosts)
+        foreach (GhostBehavior ghost in _ghosts)
         {
-            ghost.GetComponent<GhostBehavior>().enabled = false;
+            ghost.enabled = false;
         }
 
         print("You win!");
@@ -144,15 +150,15 @@ public class GameManager : MonoBehaviour
 
     private void Restart()
     {
-        _pacman.SetActive(true);
-        _pacman.GetComponent<PacmanMovementArcade>().Reset();
+        _pacman.enabled = true;
+        _pacman.Reset();
 
         StopCoroutine(StateRoutine());
         
-        foreach(GameObject ghost in _ghosts)
+        foreach(GhostBehavior ghost in _ghosts)
         {
-            ghost.GetComponent<GhostBehavior>().enabled = true;
-            ghost.GetComponent<GhostBehavior>().Reset();
+            ghost.enabled = true;
+            ghost.Reset();
         }
 
         StartCoroutine(StateRoutine());
@@ -160,29 +166,32 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator StateRoutine()
     {
-        _intervalIndex = 0;
+        int intervalIndex = 0;
+        float time = 0f;
 
-        while (_intervalIndex < _intervals.Length)
+        while (true)
         {
-            if (_intervalIndex % 2 == 0)
+            if (!_pacman.isPoweredUp)
             {
-                print($" {_intervalIndex} Scatter");
-            }
-            else
-            {
-                print($" {_intervalIndex} Chase");
+                time += Time.deltaTime;
+                _timeText.text = $"Time: {time}";
+
+                if (time > _intervals[intervalIndex])
+                {
+                    time = 0f;
+                    intervalIndex++;
+
+                    foreach (GhostBehavior ghost in _ghosts)
+                    {
+                        ghost.SwitchState();
+                    }
+
+                    print("State switch!");
+                }
             }
 
-            foreach (GameObject ghost in _ghosts)
-            {
-                ghost.GetComponent<GhostBehavior>().SwitchState();
-            }
-
-            yield return new WaitForSeconds(_intervals[_intervalIndex]);
-
-            _intervalIndex++;
+            yield return null;
         }
-
     }
 
 
