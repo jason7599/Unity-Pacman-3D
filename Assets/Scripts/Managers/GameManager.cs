@@ -26,9 +26,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Material _frightenedMaterial;
     public Material FrightenedMaterial { get { return _frightenedMaterial; } }
 
-    private GhostState _ghostState = GhostState.SCATTER;
-    public GhostState ghostState { get { return _ghostState; } }
-
     private float[] _intervals = {7f, 20f, 7f, 20f, 5f, 20f, 5f, float.PositiveInfinity};
     private bool _timerPaused = false;
 
@@ -89,7 +86,7 @@ public class GameManager : MonoBehaviour
                 _timeText.text = $"Time: {time}";
             }
 
-            if (time > _intervals[intervalIndex])
+            if (time >= _intervals[intervalIndex])
             {
                 time = 0f;
                 intervalIndex++;
@@ -99,7 +96,7 @@ public class GameManager : MonoBehaviour
                     ghost.SwitchState();
                 }
 
-                print("State switch!");
+                print($"{intervalIndex} Switch; Next switch in {_intervals[intervalIndex]}");
             }
 
             yield return null;
@@ -109,7 +106,10 @@ public class GameManager : MonoBehaviour
     public void OnPacmanDeath()
     {
         _pacman.enabled = false;
+        _timerPaused = true;
 
+        StopAllCoroutines();
+        
         // stop chasing
         foreach(GhostBehavior ghost in _ghosts)
         {
@@ -146,6 +146,7 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator PowerUpRoutine()
     {
+        _timerPaused = true;
         print("powerup");
 
         foreach (GhostBehavior ghost in _ghosts)
@@ -157,14 +158,17 @@ public class GameManager : MonoBehaviour
 
         foreach (GhostBehavior ghost in _ghosts)
         {
-            ghost.ExitFrightened();
+            if (ghost.state == GhostState.FRIGHTENED)
+                ghost.ExitFrightened();
         }
         
+        _timerPaused = false;
         print("powerup end");
     }
 
     private void OnLevelFinished()
     {
+        _timerPaused = true;
         _pacman.enabled = false;
 
         foreach (GhostBehavior ghost in _ghosts)
@@ -179,8 +183,6 @@ public class GameManager : MonoBehaviour
     {
         _pacman.enabled = true;
         _pacman.Reset();
-
-        StopCoroutine(StateRoutine());
         
         foreach(GhostBehavior ghost in _ghosts)
         {
@@ -188,6 +190,7 @@ public class GameManager : MonoBehaviour
             ghost.Reset();
         }
 
+        _timerPaused = false;
         StartCoroutine(StateRoutine());
     }
 

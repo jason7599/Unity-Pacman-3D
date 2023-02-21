@@ -6,7 +6,7 @@ public enum GhostState { CHASE, SCATTER, FRIGHTENED }
 public abstract class GhostBehavior : MonoBehaviour
 {
     [SerializeField] private float _enterTime = 0f;
-    [SerializeField] private Transform _home;
+    [SerializeField] protected Transform _home;
     [SerializeField] private LayerMask _wallLayer;
 
     private GhostState _state = GhostState.SCATTER;
@@ -97,7 +97,6 @@ public abstract class GhostBehavior : MonoBehaviour
 
     private IEnumerator ExitHome()
     {
-        // transform.position = new Vector3(_doorExitPos.x, transform.position.y, transform.position.z);
         SetDirection(Vector3.forward);
         _rigidbody.isKinematic = true;
 
@@ -142,9 +141,6 @@ public abstract class GhostBehavior : MonoBehaviour
     // choose best direction for current _target
     private Vector3 GetBestDirection()
     {
-        Vector3 nextDirection = transform.forward;
-        float minDistance = float.PositiveInfinity;
-
         if (_state == GhostState.CHASE)
         {
             _target = ChaseTarget();
@@ -157,6 +153,9 @@ public abstract class GhostBehavior : MonoBehaviour
         {
             _target = Random.insideUnitSphere * 50f;
         }
+
+        Vector3 nextDirection = transform.forward;
+        float minDistance = float.PositiveInfinity;
 
         if (CanMoveTo(transform.forward))
         {
@@ -185,7 +184,7 @@ public abstract class GhostBehavior : MonoBehaviour
         return nextDirection;
     }
 
-    [SerializeField] private float halfExtents = 0.45f;
+    [SerializeField] private float halfExtents = 0.3f;
     [SerializeField] private float offset = 0.2f;
 
     private bool CanMoveTo(Vector3 direction)
@@ -204,7 +203,12 @@ public abstract class GhostBehavior : MonoBehaviour
     public void Reset()
     {
         transform.position = _startingPosition;
+        
+        if (_state == GhostState.FRIGHTENED)
+            ExitFrightened();
+        
         _state = GhostState.SCATTER;
+        _prevState = GhostState.SCATTER;
 
         StopAllCoroutines();
         StartCoroutine(InitRoutine());
@@ -226,7 +230,9 @@ public abstract class GhostBehavior : MonoBehaviour
 
     public void EnterFrightened()
     {
-        _prevState = _state;
+        if (_state != GhostState.FRIGHTENED)
+            _prevState = _state;
+            
         _state = GhostState.FRIGHTENED;
         _speedMultiplier = 0.5f;
         _renderer.material = _frightenedMaterial;
@@ -243,6 +249,7 @@ public abstract class GhostBehavior : MonoBehaviour
 
     public void OnEaten()
     {
+        StopAllCoroutines();
         // TODO: eyes
         StartCoroutine(Respawn());
     }
@@ -273,6 +280,11 @@ public abstract class GhostBehavior : MonoBehaviour
                 Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
             }
         }
+    }
+
+    private void OnDisable()
+    {
+        StopAllCoroutines();
     }
 
 }

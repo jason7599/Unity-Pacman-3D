@@ -132,5 +132,5 @@ MonoBehaviour:
   _wallLayer:
     serializedVersion: 2
     m_Bits: 64
-  halfExtents: 0.45
+  halfExtents: 0.3
   offset: 0.2
