@@ -10,6 +10,7 @@ public abstract class GhostBehavior : MonoBehaviour
     [SerializeField] private LayerMask _wallLayer;
 
     private GhostState _state = GhostState.SCATTER;
+    public GhostState state { get { return _state; } }
     private GhostState _prevState = GhostState.SCATTER;
 
     private float _speed;
@@ -71,7 +72,9 @@ public abstract class GhostBehavior : MonoBehaviour
     private IEnumerator Respawn()
     {
         transform.position = _spawnPos;
-        _state = _prevState;
+        
+        if (_state == GhostState.FRIGHTENED)
+            ExitFrightened();
 
         yield return StartCoroutine(ExitHome());
     }
@@ -150,6 +153,10 @@ public abstract class GhostBehavior : MonoBehaviour
         {
             _target = _home.position;
         }
+        else if (_state == GhostState.FRIGHTENED)
+        {
+            _target = Random.insideUnitSphere * 50f;
+        }
 
         if (CanMoveTo(transform.forward))
         {
@@ -197,10 +204,9 @@ public abstract class GhostBehavior : MonoBehaviour
     public void Reset()
     {
         transform.position = _startingPosition;
-        _state = _prevState;
+        _state = GhostState.SCATTER;
 
         StopAllCoroutines();
-
         StartCoroutine(InitRoutine());
     }
 
@@ -222,7 +228,7 @@ public abstract class GhostBehavior : MonoBehaviour
     {
         _prevState = _state;
         _state = GhostState.FRIGHTENED;
-        _speedMultiplier = 0.75f;
+        _speedMultiplier = 0.5f;
         _renderer.material = _frightenedMaterial;
 
         SetDirection(-transform.forward);
@@ -230,46 +236,43 @@ public abstract class GhostBehavior : MonoBehaviour
 
     public void ExitFrightened()
     {
-        if (_state == GhostState.FRIGHTENED)
-        {
-            _state = _prevState;
-            _speedMultiplier = 1f;
-            _renderer.material = _material;
-        }
+        _state = _prevState;
+        _speedMultiplier = 1f;
+        _renderer.material = _material;
     }
 
     public void OnEaten()
     {
-        ExitFrightened();
-        
+        // TODO: eyes
+        StartCoroutine(Respawn());
     }
 
-    // private void OnDrawGizmos()
-    // {
-    //     if (_pacmanMovement != null)
-    //     {
-    //         Gizmos.color = Color.magenta;
-    //         Gizmos.DrawRay(transform.position, _target - transform.position);
-    //     }
+    private void OnDrawGizmos()
+    {
+        if (_pacmanMovement != null)
+        {
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawRay(transform.position, _target - transform.position);
+        }
 
-    //     Vector3[] directions = new Vector3[] {transform.forward, transform.right, -transform.forward, -transform.right};
+        Vector3[] directions = new Vector3[] {transform.forward, transform.right, -transform.forward, -transform.right};
 
-    //     foreach (Vector3 direction in directions)
-    //     {
-    //         RaycastHit hit;
-    //         if (Physics.BoxCast(transform.position - direction * offset, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer))
-    //         {
-    //             Gizmos.color = Color.red;
-    //             Gizmos.DrawRay(transform.position - direction * offset, direction * hit.distance * 1.5f);
-    //             Gizmos.DrawWireCube(transform.position + direction * hit.distance, Vector3.one * halfExtents * 2);
-    //         }
-    //         else
-    //         {
-    //             Gizmos.color = Color.green;
-    //             Gizmos.DrawRay(transform.position - direction * offset, direction);
-    //             Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
-    //         }
-    //     }
-    // }
+        foreach (Vector3 direction in directions)
+        {
+            RaycastHit hit;
+            if (Physics.BoxCast(transform.position - direction * offset, Vector3.one * halfExtents, direction, out hit, Quaternion.identity, 1f, _wallLayer))
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawRay(transform.position - direction * offset, direction * hit.distance * 1.5f);
+                Gizmos.DrawWireCube(transform.position + direction * hit.distance, Vector3.one * halfExtents * 2);
+            }
+            else
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawRay(transform.position - direction * offset, direction);
+                Gizmos.DrawWireCube(transform.position + direction, Vector3.one * halfExtents * 2);
+            }
+        }
+    }
 
 }

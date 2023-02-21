@@ -18,8 +18,6 @@ public class PacmanMovementArcade : MonoBehaviour
     public Vector3 Direction { get { return _direction; } }
     public Vector3 Position { get { return transform.position; } }
     
-    public bool isPoweredUp = false;
-
     private Rigidbody _rigidbody;
     private Camera _cam;
 
@@ -45,9 +43,10 @@ public class PacmanMovementArcade : MonoBehaviour
 
         if (go.CompareTag("Ghost")) // ghost
         {
-            if (isPoweredUp)
+            GhostBehavior ghost = go.GetComponent<GhostBehavior>();
+            if (ghost.state == GhostState.FRIGHTENED)
             {
-                go.GetComponent<GhostBehavior>().Reset();
+                ghost.OnEaten();
             }
             else
             {

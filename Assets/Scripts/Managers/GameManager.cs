@@ -26,12 +26,16 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Material _frightenedMaterial;
     public Material FrightenedMaterial { get { return _frightenedMaterial; } }
 
+    private GhostState _ghostState = GhostState.SCATTER;
+    public GhostState ghostState { get { return _ghostState; } }
+
+    private float[] _intervals = {7f, 20f, 7f, 20f, 5f, 20f, 5f, float.PositiveInfinity};
+    private bool _timerPaused = false;
+
     [SerializeField] private Text _livesText;
     [SerializeField] private Text _scoreText;
     [SerializeField] private Text _pelletsText;
     [SerializeField] private Text _timeText;
-
-    private float[] _intervals = {7f, 20f, 7f, 20f, 5f, 20f, 5f, float.PositiveInfinity};
 
     private int _lives = 3;
     private int _score = 0;
@@ -52,16 +56,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        StartCoroutine(StateRoutine());
-    }
-
-    private void Update()
-    {
-
-    }
-
     private static void Init()
     {
         if (_instance == null)
@@ -74,6 +68,41 @@ public class GameManager : MonoBehaviour
             }
             DontDestroyOnLoad(go);
             _instance = go.GetComponent<GameManager>();
+        }
+    }
+
+    private void Start()
+    {
+        StartCoroutine(StateRoutine());
+    }
+
+    private IEnumerator StateRoutine()
+    {
+        int intervalIndex = 0;
+        float time = 0f;
+
+        while (true)
+        {
+            if (!_timerPaused)
+            {
+                time += Time.deltaTime;
+                _timeText.text = $"Time: {time}";
+            }
+
+            if (time > _intervals[intervalIndex])
+            {
+                time = 0f;
+                intervalIndex++;
+
+                foreach (GhostBehavior ghost in _ghosts)
+                {
+                    ghost.SwitchState();
+                }
+
+                print("State switch!");
+            }
+
+            yield return null;
         }
     }
 
@@ -118,7 +147,6 @@ public class GameManager : MonoBehaviour
     private IEnumerator PowerUpRoutine()
     {
         print("powerup");
-        _pacman.isPoweredUp = true;
 
         foreach (GhostBehavior ghost in _ghosts)
         {
@@ -132,7 +160,6 @@ public class GameManager : MonoBehaviour
             ghost.ExitFrightened();
         }
         
-        _pacman.isPoweredUp = false;
         print("powerup end");
     }
 
@@ -163,36 +190,5 @@ public class GameManager : MonoBehaviour
 
         StartCoroutine(StateRoutine());
     }
-
-    private IEnumerator StateRoutine()
-    {
-        int intervalIndex = 0;
-        float time = 0f;
-
-        while (true)
-        {
-            if (!_pacman.isPoweredUp)
-            {
-                time += Time.deltaTime;
-                _timeText.text = $"Time: {time}";
-
-                if (time > _intervals[intervalIndex])
-                {
-                    time = 0f;
-                    intervalIndex++;
-
-                    foreach (GhostBehavior ghost in _ghosts)
-                    {
-                        ghost.SwitchState();
-                    }
-
-                    print("State switch!");
-                }
-            }
-
-            yield return null;
-        }
-    }
-
 
 }
