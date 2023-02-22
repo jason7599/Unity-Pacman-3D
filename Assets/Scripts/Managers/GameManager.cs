@@ -141,11 +141,6 @@ public class GameManager : MonoBehaviour
 
         if (_pelletsLeft == 0) OnLevelFinished();
 
-        StartCoroutine(PowerUpRoutine());
-    }
-
-    private IEnumerator PowerUpRoutine()
-    {
         _timerPaused = true;
         print("powerup");
 
@@ -154,14 +149,18 @@ public class GameManager : MonoBehaviour
             ghost.EnterFrightened();
         }
 
-        yield return new WaitForSeconds(powerUpDuration);
+        CancelInvoke(nameof(OnPowerUpEnd));
+        Invoke(nameof(OnPowerUpEnd), powerUpDuration);
+    }
 
+    private void OnPowerUpEnd()
+    {
         foreach (GhostBehavior ghost in _ghosts)
         {
             if (ghost.state == GhostState.FRIGHTENED)
                 ghost.ExitFrightened();
         }
-        
+
         _timerPaused = false;
         print("powerup end");
     }

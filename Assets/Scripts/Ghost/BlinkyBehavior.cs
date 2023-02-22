@@ -6,5 +6,4 @@ public class BlinkyBehavior : GhostBehavior
     { 
         return _pacmanMovement.Position;
     }
-
 }
