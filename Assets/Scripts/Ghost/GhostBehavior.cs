@@ -76,6 +76,7 @@ public abstract class GhostBehavior : MonoBehaviour
         if (_state == GhostState.FRIGHTENED)
             ExitFrightened();
 
+        yield return StartCoroutine(IdleHome(2f));
         yield return StartCoroutine(ExitHome());
     }
 
